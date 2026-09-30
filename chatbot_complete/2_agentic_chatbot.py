@@ -35,9 +35,8 @@ async def on_message(message: cl.Message):
             with cl.Step(name=f"{event.data.item.name}", type="tool") as step:
                 step.input = event.data.item.arguments
                 print(
-                    f"\nTool call: {
-                        event.data.item.name} with args: {
-                        event.data.item.arguments}"
+                    f"\nTool call: {event.data.item.name} with args: "
+                    f"{event.data.item.arguments}"
                 )
 
     await msg.update()

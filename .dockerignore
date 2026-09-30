@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+__pycache__
+*.pyc
+*.log
+chatkit/node_modules
+chatkit/.next
+notebooks
+notebooks_complete
+solutions
+.dev
+.devcontainer

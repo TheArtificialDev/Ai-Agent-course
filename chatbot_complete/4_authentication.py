@@ -1,18 +1,22 @@
 import chainlit as cl
 import dotenv
 import os
+from pathlib import Path
+from secrets import compare_digest
 
 from openai.types.responses import ResponseTextDeltaEvent
 
 from agents import Runner, SQLiteSession
 from nutrition_agent import nutrition_agent
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 @cl.on_chat_start
 async def on_chat_start():
-    session = SQLiteSession("conversation_history")
+    session = SQLiteSession(
+        os.getenv("CHATBOT_SESSION_DB_PATH", "conversation_history")
+    )
     cl.user_session.set("agent_session", session)
 
 
@@ -44,13 +48,15 @@ async def on_message(message: cl.Message):
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
-    if (username, password) == (
-        os.getenv("CHAINLIT_USERNAME"),
-        os.getenv("CHAINLIT_PASSWORD"),
-    ):
+    configured_username = os.getenv("CHAINLIT_USERNAME")
+    configured_password = os.getenv("CHAINLIT_PASSWORD")
+
+    if configured_username and configured_password and compare_digest(
+        username, configured_username
+    ) and compare_digest(password, configured_password):
         return cl.User(
-            identifier="Student",
+            identifier=username,
             metadata={"role": "student", "provider": "credentials"},
         )
-    else:
-        return None
+
+    return None

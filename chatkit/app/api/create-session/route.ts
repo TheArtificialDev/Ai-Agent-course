@@ -40,8 +40,9 @@ export async function POST(request: Request): Promise<Response> {
     const { userId, sessionCookie: resolvedSessionCookie } =
       await resolveUserId(request);
     sessionCookie = resolvedSessionCookie;
-    const resolvedWorkflowId =
-      parsedBody?.workflow?.id ?? parsedBody?.workflowId ?? WORKFLOW_ID;
+    // The workflow is server configuration. Never allow a browser to select an
+    // arbitrary workflow while this endpoint is using the server API key.
+    const resolvedWorkflowId = WORKFLOW_ID;
 
     if (process.env.NODE_ENV !== "production") {
       console.info("[create-session] handling request", {
@@ -113,6 +114,14 @@ export async function POST(request: Request): Promise<Response> {
 
     const clientSecret = upstreamJson?.client_secret ?? null;
     const expiresAfter = upstreamJson?.expires_after ?? null;
+    if (typeof clientSecret !== "string" || clientSecret.length === 0) {
+      return buildJsonResponse(
+        { error: "ChatKit returned no client secret" },
+        502,
+        { "Content-Type": "application/json" },
+        sessionCookie
+      );
+    }
     const responsePayload = {
       client_secret: clientSecret,
       expires_after: expiresAfter,
@@ -197,6 +206,7 @@ function serializeSessionCookie(value: string): string {
     `Max-Age=${SESSION_COOKIE_MAX_AGE}`,
     "HttpOnly",
     "SameSite=Lax",
+    "Priority=High",
   ];
 
   if (process.env.NODE_ENV === "production") {

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlencode
 
 import chromadb
 from agents import (
@@ -17,7 +18,9 @@ from pydantic import BaseModel
 # This is the same code as in the rag.ipynb notebook
 
 
-chroma_path = Path(__file__).parent.parent / "chroma"
+chroma_path = Path(
+    os.getenv("CHROMA_PATH", str(Path(__file__).parent.parent / "chroma"))
+)
 chroma_client = chromadb.PersistentClient(path=str(chroma_path))
 nutrition_db = chroma_client.get_collection(name="nutrition_db")
 
@@ -55,18 +58,25 @@ def calorie_lookup_tool(query: str, max_results: int = 3) -> str:
     return "Nutrition Information:\n" + "\n".join(formatted_results)
 
 
-# EXA Search MCP setup
-# Increased EXA timeout from 30 to 90 seconds since EXA can take longer than 30 seconds to respond when under heavy load
-exa_search_mcp = MCPServerStreamableHttp(
-    name="Exa Search MCP",
-    params={
-        "url": f"https://mcp.exa.ai/mcp?{os.environ.get('EXA_API_KEY')}",
-        "timeout": 90,
-    },
-    client_session_timeout_seconds=90,
-    cache_tools_list=True,
-    max_retry_attempts=1,
+# EXA Search MCP setup. The multi-agent app can still start without Exa so the
+# local calorie database remains available when the optional key is missing.
+exa_api_key = os.getenv("EXA_API_KEY", "").strip()
+exa_search_mcp = (
+    MCPServerStreamableHttp(
+        name="Exa Search MCP",
+        params={
+            "url": "https://mcp.exa.ai/mcp?"
+            + urlencode({"exaApiKey": exa_api_key}),
+            "timeout": 90,
+        },
+        client_session_timeout_seconds=90,
+        cache_tools_list=True,
+        max_retry_attempts=1,
+    )
+    if exa_api_key
+    else None
 )
+exa_mcp_servers = [exa_search_mcp] if exa_search_mcp is not None else []
 
 # 1st Agent: Our "Calorie Agent"
 calorie_agent_with_search = Agent(
@@ -86,7 +96,7 @@ calorie_agent_with_search = Agent(
     * Don't use the calorie_lookup_tool more than 10 times.
     """,
     tools=[calorie_lookup_tool],
-    mcp_servers=[exa_search_mcp],
+    mcp_servers=exa_mcp_servers,
 )
 
 # 2nd Agent: Our Healthy Breakfast Plan Advisor
@@ -120,7 +130,7 @@ breakfast_price_checker_agent = Agent(
     * In your final output prove the meal name, ingredients with calories and price for each meal.
     * Use markdown and be as concise as possible.
     """,
-    mcp_servers=[exa_search_mcp],
+    mcp_servers=exa_mcp_servers,
 )
 
 # 4th Agent: Main Breakfast Advisor that glues everything together
@@ -189,7 +199,7 @@ calorie_agent_with_search_guarded = Agent(
     * You only answer questions about food.
     """,
     tools=[calorie_lookup_tool],
-    mcp_servers=[exa_search_mcp],
+    mcp_servers=exa_mcp_servers,
     input_guardrails=[food_topic_guardrail],
 )
 

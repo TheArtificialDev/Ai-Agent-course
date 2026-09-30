@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: nutrition-chainlit
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd chatbot_complete && chainlit run 4_authentication.py --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CHAINLIT_AUTH_SECRET
+        generateValue: true
+      - key: CHAINLIT_USERNAME
+        sync: false
+      - key: CHAINLIT_PASSWORD
+        sync: false
+      - key: CHATBOT_SESSION_DB_PATH
+        value: /var/data/conversation_history
+      - key: CHROMA_PATH
+        value: /var/data/chroma
+    disk:
+      name: nutrition-chainlit-data
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: web
+    name: nutrition-chatkit
+    runtime: node
+    rootDir: chatkit
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CHATKIT_WORKFLOW_ID
+        sync: false
+      - key: NODE_ENV
+        value: production

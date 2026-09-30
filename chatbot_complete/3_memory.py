@@ -1,5 +1,6 @@
 import chainlit as cl
 import dotenv
+import os
 
 from openai.types.responses import ResponseTextDeltaEvent
 
@@ -11,7 +12,9 @@ dotenv.load_dotenv()
 
 @cl.on_chat_start
 async def on_chat_start():
-    session = SQLiteSession("conversation_history")
+    session = SQLiteSession(
+        os.getenv("CHATBOT_SESSION_DB_PATH", "conversation_history")
+    )
     cl.user_session.set("agent_session", session)
 
 

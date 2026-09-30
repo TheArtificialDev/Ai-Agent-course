@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from secrets import compare_digest
 
 import chainlit as cl
 import dotenv
@@ -6,15 +8,21 @@ from agents import InputGuardrailTripwireTriggered, Runner, SQLiteSession
 from nutrition_agent import exa_search_mcp, nutrition_agent
 from openai.types.responses import ResponseTextDeltaEvent
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 @cl.on_chat_start
 async def on_chat_start():
-    session = SQLiteSession("conversation_history")
+    session = SQLiteSession(
+        os.getenv("CHATBOT_SESSION_DB_PATH", "conversation_history")
+    )
     cl.user_session.set("agent_session", session)
-    # This is the only change in this file compared to the chatbot/agentic_chatbot.py file
-    await exa_search_mcp.connect()
+    if exa_search_mcp is not None:
+        await exa_search_mcp.connect()
+    else:
+        await cl.Message(
+            content="Web search is unavailable because EXA_API_KEY is not configured."
+        ).send()
 
 
 @cl.on_message
@@ -46,9 +54,8 @@ async def on_message(message: cl.Message):
             with cl.Step(name=f"{event.data.item.name}", type="tool") as step:
                 step.input = event.data.item.arguments
                 print(
-                    f"\nTool call: {
-                        event.data.item.name} with args: {
-                        event.data.item.arguments}"
+                    f"\nTool call: {event.data.item.name} with args: "
+                    f"{event.data.item.arguments}"
                 )
 
     await msg.update()
@@ -56,13 +63,15 @@ async def on_message(message: cl.Message):
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
-    if (username, password) == (
-        os.getenv("CHAINLIT_USERNAME"),
-        os.getenv("CHAINLIT_PASSWORD"),
-    ):
+    configured_username = os.getenv("CHAINLIT_USERNAME")
+    configured_password = os.getenv("CHAINLIT_PASSWORD")
+
+    if configured_username and configured_password and compare_digest(
+        username, configured_username
+    ) and compare_digest(password, configured_password):
         return cl.User(
-            identifier="Student",
+            identifier=username,
             metadata={"role": "student", "provider": "credentials"},
         )
-    else:
-        return None
+
+    return None

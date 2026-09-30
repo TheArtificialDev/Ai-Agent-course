@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title>Nutrition Assistant logo</title>
+  <rect width="128" height="128" rx="28" fill="#14532d"/>
+  <path d="M64 96c-20-10-31-26-31-45 0-13 9-24 23-27 5 9 8 18 8 29 0-11 3-20 8-29 14 3 23 14 23 27 0 19-11 35-31 45Z" fill="#bef264"/>
+  <path d="M64 96V38" fill="none" stroke="#14532d" stroke-linecap="round" stroke-width="6"/>
+</svg>
