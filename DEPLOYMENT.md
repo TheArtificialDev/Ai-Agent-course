@@ -66,6 +66,8 @@ Keep `OPENAI_API_KEY` and Chainlit secrets server-side. The browser only receive
 
 The repository includes a Render Blueprint in `render.yaml`.
 
+The repository includes `runtime.txt` to pin Render to Python 3.13.7. This is required because the pinned `onnxruntime==1.22.1` dependency does not provide a Python 3.14 wheel.
+
 1. Push this repository to GitHub or GitLab.
 2. In Render, choose **New > Blueprint** and select the repository.
 3. Set the secret values requested by Render: `OPENAI_API_KEY`, `CHAINLIT_USERNAME`, and `CHAINLIT_PASSWORD`.
